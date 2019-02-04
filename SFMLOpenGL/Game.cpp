@@ -61,7 +61,7 @@ GLuint	index,		//Index to draw
 //const string filename = "minecraft.tga";
 //const string filename = "cube.tga";
 
-const string filename = "minecraft.tga";
+const string filename = "tnt1.tga";
 
 int width; //width of texture
 int height; //height of texture
@@ -100,14 +100,16 @@ void Game::initialize()
 		finalVertex[i] = vertex[i];
 	}
 
-	finalVertex[0].texel[0] = 0.0f;
-	finalVertex[0].texel[1] = 0.0f;
+	finalVertex[0].texel[0] = 0.75f;
+	finalVertex[0].texel[1] = 0.33f;
 
-	finalVertex[1].texel[0] = 1.0f;
-	finalVertex[1].texel[1] = 1.0f;
+	finalVertex[1].texel[0] = 0.75f;
+	finalVertex[1].texel[1] = 0.33f;
 
-	finalVertex[2].texel[0] = 1.0f;
-	finalVertex[2].texel[1] = 0.0f;
+	finalVertex[2].texel[0] = 0.75f;
+	finalVertex[2].texel[1] = 0.66f;
+
+	
 
 	/* Create a new VBO using VBO id */
 	glGenBuffers(1, vbo);
@@ -392,6 +394,7 @@ void Game::unload()
 void Game::setupPoints()
 {
 	//Declare all starting positions of the vertexs
+	
 	vertex[0].coordinate[0] = -0.5f;
 	vertex[0].coordinate[1] = -0.5f;
 	vertex[0].coordinate[2] = -0.5f;
