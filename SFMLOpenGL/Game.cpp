@@ -61,7 +61,9 @@ GLuint	index,		//Index to draw
 //const string filename = "minecraft.tga";
 //const string filename = "cube.tga";
 
-const string filename = "tnt1.tga";
+//const string filename = "tnt1.tga";
+const string filename = "diamond.tga";
+
 
 int width; //width of texture
 int height; //height of texture
@@ -87,6 +89,7 @@ void Game::initialize()
 		vertex[i].color[0] = (rand() % 11) / 10.0f;
 		vertex[i].color[1] = (rand() % 11) / 10.0f;
 		vertex[i].color[2] = (rand() % 11) / 10.0f;
+		vertex[i].color[3] = 1.0f;
 	}
 
 	//setup index for triangles
@@ -100,14 +103,26 @@ void Game::initialize()
 		finalVertex[i] = vertex[i];
 	}
 
-	finalVertex[0].texel[0] = 0.75f;
-	finalVertex[0].texel[1] = 0.33f;
+	for (int i = 0; i < 36; i = i + 6)
+	{
+		vertex[i].texel[0] = 0.0;
+		vertex[i].texel[1] = 0.0;
 
-	finalVertex[1].texel[0] = 0.75f;
-	finalVertex[1].texel[1] = 0.33f;
+		vertex[i + 1].texel[0] = 1.0;
+		vertex[i + 1].texel[1] = 0.0;
 
-	finalVertex[2].texel[0] = 0.75f;
-	finalVertex[2].texel[1] = 0.66f;
+		vertex[i + 2].texel[0] = 1.0;
+		vertex[i + 2].texel[1] = 1.0;
+
+		vertex[i + 3].texel[0] = 1.0;
+		vertex[i + 3].texel[1] = 1.0;
+
+		vertex[i + 4].texel[0] = 0.0;
+		vertex[i + 4].texel[1] = 1.0;
+
+		vertex[i + 5].texel[0] = 0.0;
+		vertex[i + 5].texel[1] = 0.0;
+	}
 
 	
 
@@ -128,15 +143,16 @@ void Game::initialize()
 
 	/* Vertex Shader which would normally be loaded from an external file */
 	const char* vs_src = "#version 400\n\r"
-		"in vec4 sv_position;"
-		"in vec4 sv_color;"
-		"in vec2 sv_texel;"
+		"layout(location = 0) in vec3 sv_position;"
+		"layout(location = 1) in vec4 sv_color;"
+		"layout(location = 2) in vec2 sv_texel;"
+
 		"out vec4 color;"
 		"out vec2 texel;"
 		"void main() {"
 		"	color = sv_color;"
 		"	texel = sv_texel;"
-		"	gl_Position = sv_position;"
+		"	gl_Position = vec4(sv_position, 1.0);"
 		"}"; //Vertex Shader Src
 
 	DEBUG_MSG("Setting Up Vertex Shader");
@@ -164,9 +180,11 @@ void Game::initialize()
 		"in vec2 texel;"
 		"out vec4 fColor;"
 		"void main() {"
-		//"fColor = vec4(1.0f, 0.0f, 0.0f, 1.0f);"
-	  "fColor = texture(f_texture, texel.st);"
+		//"	fColor = vec4(0.0f, 1.0f, 0.0f, 1.0f);"
+		//"	fColor = color * texture2D(f_texture, texel);"
+		"	fColor = texture2D(f_texture, texel);"
 		"}"; //Fragment Shader Src
+
 
 	DEBUG_MSG("Setting Up Fragment Shader");
 
@@ -226,7 +244,8 @@ void Game::initialize()
 	//https://www.khronos.org/opengles/sdk/docs/man/xhtml/glTexParameter.xml
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
+	float borderColor[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+	glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
 	//Bind to OpenGL
 	//https://www.khronos.org/opengles/sdk/docs/man/xhtml/glTexImage2D.xml
 	glTexImage2D(GL_TEXTURE_2D, //2D Texture Image
@@ -237,17 +256,23 @@ void Game::initialize()
 		0, //Border
 		GL_RGBA, //Bitmap
 		GL_UNSIGNED_BYTE, img_data);
-
+	glEnable(GL_DEPTH_TEST);
 	// Find variables in the shader
 	//https://www.khronos.org/opengles/sdk/docs/man/xhtml/glGetAttribLocation.xml
 	positionID = glGetAttribLocation(progID, "sv_position");
 	colorID = glGetAttribLocation(progID, "sv_color");
 	texelID = glGetAttribLocation(progID, "sv_texel");
 	textureID = glGetUniformLocation(progID, "f_texture");
+	glBindAttribLocation(progID, texelID, "sv_position");
+
+	glEnable(GL_DEPTH_TEST);
+	glDepthFunc(GL_LESS);
+	glEnable(GL_CULL_FACE);
 }
 
 void Game::update()
 {
+	glUseProgram(progID);
 	//Move the cube up 
 	if (sf::Keyboard::isKeyPressed(sf::Keyboard::Up))
 	{
@@ -367,8 +392,8 @@ void Game::render()
 	// Set pointers for each parameter
 	// https://www.opengl.org/sdk/docs/man4/html/glVertexAttribPointer.xhtml
 	glVertexAttribPointer(positionID, 3, GL_FLOAT, GL_FALSE, sizeof(Vert), 0);
-	glVertexAttribPointer(colorID, 4, GL_FLOAT, GL_FALSE, sizeof(Vert), 0);
-	glVertexAttribPointer(texelID, 2, GL_FLOAT, GL_FALSE, sizeof(Vert), 0);
+	glVertexAttribPointer(colorID, 4, GL_FLOAT, GL_FALSE, sizeof(Vert), (void*)(3 * sizeof(float)));
+	glVertexAttribPointer(texelID, 2, GL_FLOAT, GL_FALSE, sizeof(Vert), (void*)(7 * sizeof(float)));
 
 	//Enable Arrays
 	glEnableVertexAttribArray(positionID);
@@ -394,149 +419,157 @@ void Game::unload()
 void Game::setupPoints()
 {
 	//Declare all starting positions of the vertexs
-	
-	vertex[0].coordinate[0] = -0.5f;
-	vertex[0].coordinate[1] = -0.5f;
-	vertex[0].coordinate[2] = -0.5f;
 
-	vertex[1].coordinate[0] = -0.5f;
-	vertex[1].coordinate[1] = -0.5f;
-	vertex[1].coordinate[2] = 0.5f;
+	// Front
+	vertex[0].coordinate[0] = -0.5;
+	vertex[0].coordinate[1] = -0.5;
+	vertex[0].coordinate[2] = 0.5;
 
-	vertex[2].coordinate[0] = -0.5f;
-	vertex[2].coordinate[1] = 0.5f;
-	vertex[2].coordinate[2] = -0.5f;
+	vertex[1].coordinate[0] = 0.5;
+	vertex[1].coordinate[1] = -0.5;
+	vertex[1].coordinate[2] = 0.5;
 
-	vertex[3].coordinate[0] = 0.5f;
-	vertex[3].coordinate[1] = 0.5f;
-	vertex[3].coordinate[2] = -0.5f;
+	vertex[2].coordinate[0] = 0.5;
+	vertex[2].coordinate[1] = 0.5;
+	vertex[2].coordinate[2] = 0.5;
 
-	vertex[4].coordinate[0] = -0.5f;
-	vertex[4].coordinate[1] = -0.5f;
-	vertex[4].coordinate[2] = -0.5f;
+	vertex[3].coordinate[0] = 0.5;
+	vertex[3].coordinate[1] = 0.5;
+	vertex[3].coordinate[2] = 0.5;
 
-	vertex[5].coordinate[0] = -0.5f;
-	vertex[5].coordinate[1] = 0.5f;
-	vertex[5].coordinate[2] = -0.5f;
+	vertex[4].coordinate[0] = -0.5;
+	vertex[4].coordinate[1] = 0.5;
+	vertex[4].coordinate[2] = 0.5;
 
-	vertex[6].coordinate[0] = 0.5f;
-	vertex[6].coordinate[1] = -0.5f;
-	vertex[6].coordinate[2] = 0.5f;
+	vertex[5].coordinate[0] = -0.5;
+	vertex[5].coordinate[1] = -0.5;
+	vertex[5].coordinate[2] = 0.5;
 
-	vertex[7].coordinate[0] = -0.5f;
-	vertex[7].coordinate[1] = -0.5f;
-	vertex[7].coordinate[2] = -0.5f;
+	// right side 
 
-	vertex[8].coordinate[0] = 0.5f;
-	vertex[8].coordinate[1] = -0.5f;
-	vertex[8].coordinate[2] = -0.5f;
+	vertex[6].coordinate[0] = 0.5;
+	vertex[6].coordinate[1] = -0.5;
+	vertex[6].coordinate[2] = 0.5;
 
-	vertex[9].coordinate[0] = 0.5f;
-	vertex[9].coordinate[1] = 0.5f;
-	vertex[9].coordinate[2] = -0.5f;
+	vertex[7].coordinate[0] = 0.5;
+	vertex[7].coordinate[1] = -0.5;
+	vertex[7].coordinate[2] = -0.5;
 
-	vertex[10].coordinate[0] = 0.5f;
-	vertex[10].coordinate[1] = -0.5f;
-	vertex[10].coordinate[2] = -0.5f;
+	vertex[8].coordinate[0] = 0.5;
+	vertex[8].coordinate[1] = 0.5;
+	vertex[8].coordinate[2] = -0.5;
 
-	vertex[11].coordinate[0] = -0.5f;
-	vertex[11].coordinate[1] = -0.5f;
-	vertex[11].coordinate[2] = -0.5f;
 
-	vertex[12].coordinate[0] = -0.5f;
-	vertex[12].coordinate[1] = -0.5f;
-	vertex[12].coordinate[2] = 0.5f;
+	vertex[9].coordinate[0] = 0.5;
+	vertex[9].coordinate[1] = 0.5;
+	vertex[9].coordinate[2] = -0.5;
 
-	vertex[13].coordinate[0] = -0.5f;
-	vertex[13].coordinate[1] = 0.5f;
-	vertex[13].coordinate[2] = 0.5f;
+	vertex[10].coordinate[0] = 0.5;
+	vertex[10].coordinate[1] = 0.5;
+	vertex[10].coordinate[2] = 0.5;
 
-	vertex[14].coordinate[0] = -0.5f;
-	vertex[14].coordinate[1] = 0.5f;
-	vertex[14].coordinate[2] = -0.5f;
+	vertex[11].coordinate[0] = 0.5;
+	vertex[11].coordinate[1] = -0.5;
+	vertex[11].coordinate[2] = 0.5;
 
-	vertex[15].coordinate[0] = 0.5f;
-	vertex[15].coordinate[1] = -0.5f;
-	vertex[15].coordinate[2] = 0.5f;
+	// left side 
 
-	vertex[16].coordinate[0] = -0.5f;
-	vertex[16].coordinate[1] = -0.5f;
-	vertex[16].coordinate[2] = 0.5f;
+	vertex[12].coordinate[0] = -0.5;
+	vertex[12].coordinate[1] = -0.5;
+	vertex[12].coordinate[2] = -0.5;
 
-	vertex[17].coordinate[0] = -0.5f;
-	vertex[17].coordinate[1] = -0.5f;
-	vertex[17].coordinate[2] = -0.5f;
+	vertex[13].coordinate[0] = -0.5;
+	vertex[13].coordinate[1] = -0.5;
+	vertex[13].coordinate[2] = 0.5;
 
-	vertex[18].coordinate[0] = -0.5f;
-	vertex[18].coordinate[1] = 0.5f;
-	vertex[18].coordinate[2] = 0.5f;
+	vertex[14].coordinate[0] = -0.5;
+	vertex[14].coordinate[1] = 0.5;
+	vertex[14].coordinate[2] = 0.5;
 
-	vertex[19].coordinate[0] = -0.5f;
-	vertex[19].coordinate[1] = -0.5f;
-	vertex[19].coordinate[2] = 0.5f;
+	vertex[15].coordinate[0] = -0.5;
+	vertex[15].coordinate[1] = 0.5;
+	vertex[15].coordinate[2] = 0.5;
 
-	vertex[20].coordinate[0] = 0.5f;
-	vertex[20].coordinate[1] = -0.5f;
-	vertex[20].coordinate[2] = 0.5f;
+	vertex[16].coordinate[0] = -0.5;
+	vertex[16].coordinate[1] = 0.5;
+	vertex[16].coordinate[2] = -0.5;
 
-	vertex[21].coordinate[0] = 0.5f;
-	vertex[21].coordinate[1] = 0.5f;
-	vertex[21].coordinate[2] = 0.5f;
+	vertex[17].coordinate[0] = -0.5;
+	vertex[17].coordinate[1] = -0.5;
+	vertex[17].coordinate[2] = -0.5;
 
-	vertex[22].coordinate[0] = 0.5f;
-	vertex[22].coordinate[1] = -0.5f;
-	vertex[22].coordinate[2] = -0.5f;
+	//// Back
+	vertex[18].coordinate[0] = 0.5;
+	vertex[18].coordinate[1] = -0.5;
+	vertex[18].coordinate[2] = -0.5;
 
-	vertex[23].coordinate[0] = 0.5f;
-	vertex[23].coordinate[1] = 0.5f;
-	vertex[23].coordinate[2] = -0.5f;
+	vertex[19].coordinate[0] = -0.5;
+	vertex[19].coordinate[1] = -0.5;
+	vertex[19].coordinate[2] = -0.5;
 
-	vertex[24].coordinate[0] = 0.5f;
-	vertex[24].coordinate[1] = -0.5f;
-	vertex[24].coordinate[2] = -0.5f;
+	vertex[20].coordinate[0] = -0.5;
+	vertex[20].coordinate[1] = 0.5;
+	vertex[20].coordinate[2] = -0.5;
 
-	vertex[25].coordinate[0] = 0.5f;
-	vertex[25].coordinate[1] = 0.5f;
-	vertex[25].coordinate[2] = 0.5f;
+	vertex[21].coordinate[0] = -0.5;
+	vertex[21].coordinate[1] = 0.5;
+	vertex[21].coordinate[2] = -0.5;
 
-	vertex[26].coordinate[0] = 0.5f;
-	vertex[26].coordinate[1] = -0.5f;
-	vertex[26].coordinate[2] = 0.5f;
+	vertex[22].coordinate[0] = 0.5;
+	vertex[22].coordinate[1] = 0.5;
+	vertex[22].coordinate[2] = -0.5;
 
-	vertex[27].coordinate[0] = 0.5f;
-	vertex[27].coordinate[1] = 0.5f;
-	vertex[27].coordinate[2] = 0.5f;
+	vertex[23].coordinate[0] = 0.5;
+	vertex[23].coordinate[1] = -0.5;
+	vertex[23].coordinate[2] = -0.5;
 
-	vertex[28].coordinate[0] = 0.5f;
-	vertex[28].coordinate[1] = 0.5f;
-	vertex[28].coordinate[2] = -0.5f;
+	// bottom
+	vertex[24].coordinate[0] = -0.5;
+	vertex[24].coordinate[1] = -0.5;
+	vertex[24].coordinate[2] = -0.5;
 
-	vertex[29].coordinate[0] = -0.5f;
-	vertex[29].coordinate[1] = 0.5f;
-	vertex[29].coordinate[2] = -0.5f;
+	vertex[25].coordinate[0] = 0.5;
+	vertex[25].coordinate[1] = -0.5;
+	vertex[25].coordinate[2] = -0.5;
 
-	vertex[30].coordinate[0] = 0.5f;
-	vertex[30].coordinate[1] = 0.5f;
-	vertex[30].coordinate[2] = 0.5f;
+	vertex[26].coordinate[0] = 0.5;
+	vertex[26].coordinate[1] = -0.5;
+	vertex[26].coordinate[2] = 0.5;
 
-	vertex[31].coordinate[0] = -0.5f;
-	vertex[31].coordinate[1] = 0.5f;
-	vertex[31].coordinate[2] = -0.5f;
+	vertex[27].coordinate[0] = 0.5;
+	vertex[27].coordinate[1] = -0.5;
+	vertex[27].coordinate[2] = 0.5;
 
-	vertex[32].coordinate[0] = -0.5f;
-	vertex[32].coordinate[1] = 0.5f;
-	vertex[32].coordinate[2] = 0.5f;
+	vertex[28].coordinate[0] = -0.5;
+	vertex[28].coordinate[1] = -0.5;
+	vertex[28].coordinate[2] = 0.5;
 
-	vertex[33].coordinate[0] = 0.5f;
-	vertex[33].coordinate[1] = 0.5f;
-	vertex[33].coordinate[2] = 0.5f;
+	vertex[29].coordinate[0] = -0.5;
+	vertex[29].coordinate[1] = -0.5;
+	vertex[29].coordinate[2] = -0.5;
 
-	vertex[34].coordinate[0] = -0.5f;
-	vertex[34].coordinate[1] = 0.5f;
-	vertex[34].coordinate[2] = 0.5f;
+	// Top
+	vertex[30].coordinate[0] = -0.5;
+	vertex[30].coordinate[1] = 0.5;
+	vertex[30].coordinate[2] = 0.5;
 
-	vertex[35].coordinate[0] = 0.5f;
-	vertex[35].coordinate[1] = -0.5f;
-	vertex[35].coordinate[2] = 0.5f;
+	vertex[31].coordinate[0] = 0.5;
+	vertex[31].coordinate[1] = 0.5;
+	vertex[31].coordinate[2] = 0.5;
 
+	vertex[32].coordinate[0] = 0.5;
+	vertex[32].coordinate[1] = 0.5;
+	vertex[32].coordinate[2] = -0.5;
+
+	vertex[33].coordinate[0] = 0.5;
+	vertex[33].coordinate[1] = 0.5;
+	vertex[33].coordinate[2] = -0.5;
+
+	vertex[34].coordinate[0] = -0.5;
+	vertex[34].coordinate[1] = 0.5;
+	vertex[34].coordinate[2] = -0.5;
+
+	vertex[35].coordinate[0] = -0.5;
+	vertex[35].coordinate[1] = 0.5;
+	vertex[35].coordinate[2] = 0.5;
 }
